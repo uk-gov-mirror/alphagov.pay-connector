@@ -5,10 +5,11 @@ import com.google.common.base.Stopwatch;
 import fj.data.Either;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.gov.pay.connector.gatewayaccount.model.GatewayAccountEntity;
 import uk.gov.pay.connector.gateway.model.GatewayError;
 import uk.gov.pay.connector.gateway.util.XMLUnmarshaller;
 import uk.gov.pay.connector.gateway.util.XMLUnmarshallerException;
+import uk.gov.pay.connector.gatewayaccount.model.GatewayAccountEntity;
+import uk.gov.pay.connector.util.JsonParse;
 
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
@@ -27,8 +28,6 @@ import static fj.data.Either.right;
 import static java.lang.String.format;
 import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static javax.ws.rs.core.Response.Status.OK;
-import static uk.gov.pay.connector.gatewayaccount.model.GatewayAccount.CREDENTIALS_PASSWORD;
-import static uk.gov.pay.connector.gatewayaccount.model.GatewayAccount.CREDENTIALS_USERNAME;
 import static uk.gov.pay.connector.gateway.model.GatewayError.baseError;
 import static uk.gov.pay.connector.gateway.model.GatewayError.gatewayConnectionSocketException;
 import static uk.gov.pay.connector.gateway.model.GatewayError.gatewayConnectionTimeoutException;
@@ -36,6 +35,10 @@ import static uk.gov.pay.connector.gateway.model.GatewayError.malformedResponseR
 import static uk.gov.pay.connector.gateway.model.GatewayError.unexpectedStatusCodeFromGateway;
 import static uk.gov.pay.connector.gateway.model.GatewayError.unknownHostException;
 import static uk.gov.pay.connector.gateway.util.AuthUtil.encode;
+import static uk.gov.pay.connector.gatewayaccount.model.GatewayAccount.CREDENTIALS_API_KEY;
+import static uk.gov.pay.connector.gatewayaccount.model.GatewayAccount.CREDENTIALS_PASSWORD;
+import static uk.gov.pay.connector.gatewayaccount.model.GatewayAccount.CREDENTIALS_USERNAME;
+
 
 public class GatewayClient {
     private final Logger logger = LoggerFactory.getLogger(GatewayClient.class);
@@ -46,7 +49,7 @@ public class GatewayClient {
     private final BiFunction<GatewayOrder, Builder, Builder> sessionIdentifier;
 
     public GatewayClient(Client client, Map<String, String> gatewayUrlMap,
-        BiFunction<GatewayOrder, Builder, Builder> sessionIdentifier, MetricRegistry metricRegistry) {
+                         BiFunction<GatewayOrder, Builder, Builder> sessionIdentifier, MetricRegistry metricRegistry) {
         this.gatewayUrlMap = gatewayUrlMap;
         this.client = client;
         this.metricRegistry = metricRegistry;
@@ -65,11 +68,18 @@ public class GatewayClient {
         Stopwatch responseTimeStopwatch = Stopwatch.createStarted();
         try {
             logger.info("POSTing request for account '{}' with type '{}'", account.getGatewayName(), account.getType());
-            Builder requestBuilder = client.target(gatewayUrl)
-                    .request()
-                    .header(AUTHORIZATION, encode(
-                            account.getCredentials().get(CREDENTIALS_USERNAME),
-                            account.getCredentials().get(CREDENTIALS_PASSWORD)));
+            Builder requestBuilder;
+            if (account.getCredentials().get(CREDENTIALS_API_KEY).isEmpty()) {
+                requestBuilder = client.target(gatewayUrl)
+                        .request()
+                        .header(AUTHORIZATION, encode(
+                                account.getCredentials().get(CREDENTIALS_USERNAME),
+                                account.getCredentials().get(CREDENTIALS_PASSWORD)));
+            } else {
+                requestBuilder = client.target(gatewayUrl)
+                        .request()
+                        .header(AUTHORIZATION, encode(account.getCredentials().get(CREDENTIALS_API_KEY)));
+            }
 
             response = sessionIdentifier.apply(request, requestBuilder)
                     .post(Entity.entity(request.getPayload(), request.getMediaType()));
@@ -116,13 +126,23 @@ public class GatewayClient {
 
     public <T> Either<GatewayError, T> unmarshallResponse(GatewayClient.Response response, Class<T> clazz) {
         String payload = response.getEntity();
-        logger.debug("response payload=" + payload);
         try {
             return right(XMLUnmarshaller.unmarshall(payload, clazz));
         } catch (XMLUnmarshallerException e) {
             String error = format("Could not unmarshall response %s.", payload);
             logger.error(error, e);
             return left(malformedResponseReceivedFromGateway("Invalid Response Received From Gateway"));
+        }
+    }
+    public <T> Either<GatewayError, T> parseResponse(GatewayClient.Response response, Class<T> clazz) {
+        String payload = response.getEntity();
+        
+        try {
+            return right(JsonParse.parseToObject(payload,clazz));
+        } catch (Exception e) {
+            String error = format("Could not parse json response %s.", payload);
+            logger.error(error, e);
+            return left(malformedResponseReceivedFromGateway("Invalid Json Response Received From Gateway"));
         }
     }
 

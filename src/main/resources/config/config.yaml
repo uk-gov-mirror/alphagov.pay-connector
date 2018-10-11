@@ -53,6 +53,12 @@ smartpay:
     live: ${GDS_CONNECTOR_SMARTPAY_LIVE_URL}
   credentials: ['username','password','merchant_id']
 
+stripe:
+  urls:
+    test: ${GDS_CONNECTOR_STRIPE_TEST_URL}
+    live: ${GDS_CONNECTOR_STRIPE_LIVE_URL}
+  credentials: ['apiKey']
+
 epdq:
   urls:
     test: ${GDS_CONNECTOR_EPDQ_TEST_URL}

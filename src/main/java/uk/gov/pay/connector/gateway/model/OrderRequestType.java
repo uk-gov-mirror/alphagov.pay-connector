@@ -1,6 +1,7 @@
 package uk.gov.pay.connector.gateway.model;
 
 public enum OrderRequestType {
+    TOKEN("token"),
     AUTHORISE("authorise"),
     AUTHORISE_3DS("authorise3DS"),
     CAPTURE("capture"),

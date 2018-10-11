@@ -36,6 +36,12 @@ smartpay:
     live: http://localhost:10106/pal/servlet/soap/Payment
   credentials: ['username','password']
 
+stripe:
+  urls:
+    test: https://api.stripe.com/v1
+    live: https://api.stripe.com/v1
+    credentials: ['apiKey']
+
 epdq:
   urls:
     test: ${GDS_CONNECTOR_EPDQ_TEST_URL}

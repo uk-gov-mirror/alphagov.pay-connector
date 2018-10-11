@@ -6,4 +6,8 @@ public class AuthUtil {
     public static String encode(String username, String password) {
         return "Basic " + Base64.encodeAsString(username + ":" + password);
     }
+
+    public static String encode(String key) {
+        return "Basic " + Base64.encodeAsString(key);
+    }
 }

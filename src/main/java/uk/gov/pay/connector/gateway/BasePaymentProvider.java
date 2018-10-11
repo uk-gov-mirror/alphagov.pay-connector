@@ -5,12 +5,14 @@ import uk.gov.pay.connector.gateway.model.response.BaseResponse;
 import uk.gov.pay.connector.gateway.model.response.GatewayResponse;
 import uk.gov.pay.connector.gateway.model.response.GatewayResponse.GatewayResponseBuilder;
 import uk.gov.pay.connector.gateway.util.ExternalRefundAvailabilityCalculator;
+import uk.gov.pay.connector.gatewayaccount.model.GatewayAccountEntity;
 
 import java.util.EnumMap;
 import java.util.Optional;
 import java.util.function.Function;
 
 import static fj.data.Either.reduce;
+import static uk.gov.pay.connector.gateway.PaymentGatewayName.STRIPE;
 
 abstract public class BasePaymentProvider<T extends BaseResponse, R> implements PaymentProvider<T, R> {
 
@@ -46,7 +48,7 @@ abstract public class BasePaymentProvider<T extends BaseResponse, R> implements 
                         .postRequestFor(route, request.getGatewayAccount(), order.apply(request))
                         .bimap(
                                 GatewayResponse::with,
-                                r -> mapToResponse(r, clazz, responseIdentifier, gatewayClient)
+                                r -> mapToResponse(r, clazz, responseIdentifier, gatewayClient, request.getGatewayAccount())
                         )
         );
     }
@@ -54,17 +56,26 @@ abstract public class BasePaymentProvider<T extends BaseResponse, R> implements 
     private GatewayResponse mapToResponse(GatewayClient.Response response,
                                           Class<? extends BaseResponse> clazz,
                                           Function<GatewayClient.Response, Optional<String>> responseIdentifier,
-                                          GatewayClient client) {
+                                          GatewayClient client, GatewayAccountEntity gatewayAccountEntity) {
         GatewayResponseBuilder<BaseResponse> responseBuilder = GatewayResponseBuilder.responseBuilder();
 
-        reduce(
-                client.unmarshallResponse(response, clazz)
-                        .bimap(
-                                responseBuilder::withGatewayError,
-                                responseBuilder::withResponse
-                        )
-        );
-
+        if (STRIPE.getName().equals(gatewayAccountEntity.getGatewayName())) {
+            reduce(
+                    client.parseResponse(response, clazz)
+                            .bimap(
+                                    responseBuilder::withGatewayError,
+                                    responseBuilder::withResponse
+                            )
+            );
+        } else {
+            reduce(
+                    client.unmarshallResponse(response, clazz)
+                            .bimap(
+                                    responseBuilder::withGatewayError,
+                                    responseBuilder::withResponse
+                            )
+            );
+        }
         responseIdentifier.apply(response)
                 .ifPresent(responseBuilder::withSessionIdentifier);
 

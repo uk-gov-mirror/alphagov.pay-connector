@@ -9,7 +9,7 @@ import uk.gov.pay.connector.gateway.PaymentGatewayName;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
-public class    ConnectorConfiguration extends Configuration {
+public class ConnectorConfiguration extends Configuration {
 
     @Valid
     @NotNull
@@ -43,6 +43,10 @@ public class    ConnectorConfiguration extends Configuration {
 
     @Valid
     @NotNull
+    private GatewayConfig stripeConfig;
+
+    @Valid
+    @NotNull
     private DataSourceFactory dataSourceFactory;
 
     @Valid
@@ -68,7 +72,7 @@ public class    ConnectorConfiguration extends Configuration {
 
     @NotNull
     private String graphitePort;
-    
+
     @NotNull
     private Boolean xrayEnabled;
 
@@ -96,6 +100,11 @@ public class    ConnectorConfiguration extends Configuration {
         return epdqConfig;
     }
 
+    @JsonProperty("stripe")
+    public GatewayConfig getStripeConfig() {
+        return stripeConfig;
+    }
+
     public GatewayConfig getGatewayConfigFor(PaymentGatewayName gateway) {
         if (gateway == PaymentGatewayName.WORLDPAY) {
             return getWorldpayConfig();
@@ -107,6 +116,10 @@ public class    ConnectorConfiguration extends Configuration {
 
         if (gateway == PaymentGatewayName.EPDQ) {
             return getEpdqConfig();
+        } 
+        
+        if (gateway == PaymentGatewayName.STRIPE) {
+            return getStripeConfig();
         }
 
         throw new PaymentGatewayName.Unsupported();
@@ -152,4 +165,6 @@ public class    ConnectorConfiguration extends Configuration {
     public Boolean isXrayEnabled() {
         return xrayEnabled;
     }
+
+
 }
