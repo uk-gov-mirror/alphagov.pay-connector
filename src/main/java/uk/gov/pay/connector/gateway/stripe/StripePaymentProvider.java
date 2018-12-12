@@ -12,6 +12,7 @@ import uk.gov.pay.connector.app.StripeGatewayConfig;
 import uk.gov.pay.connector.applepay.ApplePayAuthorisationGatewayRequest;
 import uk.gov.pay.connector.charge.model.domain.ChargeEntity;
 import uk.gov.pay.connector.common.model.api.ExternalChargeRefundAvailability;
+import uk.gov.pay.connector.common.model.domain.Address;
 import uk.gov.pay.connector.gateway.CaptureResponse;
 import uk.gov.pay.connector.gateway.PaymentGatewayName;
 import uk.gov.pay.connector.gateway.PaymentProvider;
@@ -347,6 +348,19 @@ public class StripePaymentProvider implements PaymentProvider {
         params.add(new BasicNameValuePair("card[exp_month]", request.getAuthCardDetails().expiryMonth()));
         params.add(new BasicNameValuePair("card[exp_year]", request.getAuthCardDetails().expiryYear()));
         params.add(new BasicNameValuePair("card[number]", request.getAuthCardDetails().getCardNo()));
+        params.add(new BasicNameValuePair("card[name]", request.getAuthCardDetails().getCardHolder()));
+
+        if (request.getAuthCardDetails().getAddress().isPresent()) {
+            Address address = request.getAuthCardDetails().getAddress().get();
+
+            params.add(new BasicNameValuePair("card[addressLine1]", address.getLine1()));
+            params.add(new BasicNameValuePair("card[addressLine2]", address.getLine2()));
+
+            params.add(new BasicNameValuePair("card[addressCity]", address.getCity()));
+            params.add(new BasicNameValuePair("card[addressCountry]", address.getCountry()));
+            params.add(new BasicNameValuePair("card[addressZip]", address.getPostcode()));
+        }
+        
         return URLEncodedUtils.format(params, UTF_8);
     }
 }
